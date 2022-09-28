@@ -1,0 +1,99 @@
+SET UP THE UBUNTU VIRTUAL ENVIRONMENT
+terraform init
+terraform plan
+terraform apply -auto-approve
+
+DOWNLOAD AND INSTALL MINIKUBE
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+START YOUR CLUSTER 
+minikube start
+
+INSTALL KUBECTL
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version --client
+
+
+COMMANDS
+kubectl get nodes
+--Gets the nodes that are running, returns only one node
+
+minikube status
+-- Check the status of the CLUSTER
+
+kubectl version
+-- displays the client and server version of kubernetes
+
+kubectl get pod
+-- Check the pods
+
+kubectl get services 
+--Check the services 
+
+kubectl create deployment nginx-depl --image=nginx
+-- create a deployment(abstraction over a pod)
+
+kubectl get deployment 
+-- to see the status of the deployment
+
+kubectl get replicaset
+-- to see the replica that has been created 
+
+kubectl edit deployment nginx-depl
+-- to get an auto-generated configuration file of the deployment
+
+kubectl logs [pod name]
+-- Shows you what the application running inside the pod actually logged and this helps with debugging
+
+kubectl describe pod [pod name]
+-- shows the state changes happening in the pod 
+
+kubectl exec -it [pod name] --bin/bash
+-- This gets the bash terminal for the application container
+
+kubectl delete deployment [deployment name]
+-- To delete a deployment
+
+kubectl apply -f config.yaml
+
+
+touch config.yaml
+-- create the configuration file
+
+vim config.yaml
+-- to edit the configuration file
+
+
+TO EXIT VIM 
+1. Press the Esc key.
+
+2. You should see the ––INSERT–– label vanish from the lower-left.
+
+3. To save your changes before you exit, type :w , and then Enter. 
+This will save any changes made. Vim will respond by outputting the filename, 
+whether it’s new, and how many characters were written to the hard drive.
+
+To exit Vi/Vim, type :q and hit Enter.
+
+To enter insert mode in vim type "i"
+
+To get more information on the pods like IP
+kubectl get pod -o wide 
+
+To get more information on a service 
+kubectl describe service [service name]
+
+-- To see the status that kubernetes automatically generated, this will basically give you the updated config yaml file
+kubectl get deployment nginx-deployment -o yaml 
+
+-- to save it to a new document 
+kubectl get deployment nginx-deployment -o yaml > nginx-deployment-result.yaml
+
+To delete a deployment
+kubectl delete -f nginx-service.yaml
+
+
