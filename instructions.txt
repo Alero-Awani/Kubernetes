@@ -97,3 +97,12 @@ To delete a deployment
 kubectl delete -f nginx-service.yaml
 
 
+-- to get all the components inside the CLUSTER
+kubectl get all
+
+-- to encode your secrets to base 64
+echo -n 'username' | base64
+
+-- to make sure that the service is connected to the right pod 
+kubectl describe servcie mongodb-service
+
