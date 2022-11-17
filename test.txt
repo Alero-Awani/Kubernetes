@@ -1,0 +1,160 @@
+ exec chris_store python pipelines/services/manager.py       \
+        add "${PIPELINE_NAME}" cubeadmin "${PLUGIN_TREE}" --unlock
+
+
+kubectl exec -it chris-store-78c4856c55-wxc45 python pipelines/services/manager.py    \
+    add "${PIPELINE_NAME}" cubeadmin "${PLUGIN_TREE}" 
+
+
+kubectl exec chris-store-78c4856c55-z9flq -n chris -- python plugins/services/manager.py add pl-mri10yr06mo01da_normal chris https://github.com/FNNDSC/pl-mri10yr06mo01da_normal fnndsc/pl-mri10yr06mo01da_normal --descriptorstring "$(docker run --rm fnndsc/pl-mri10yr06mo01da_normal mri10yr06mo01da_normal --json 2> /dev/null)"
+
+pl-mri10yr06mo01da_normal
+
+
+kubectl exec chris-store-78c4856c55-z9flq -n chris -- python plugins/services/manager.py add pl-topologicalcopy chris https://github.com/FNNDSC/pl-topologicalcopy fnndsc/pl-topologicalcopy --descriptorstring "$(docker run --rm fnndsc/pl-topologicalcopy topologicalcopy --json 2> /dev/null)"
+
+
+kubectl exec chris-6c68f79c74-mjzt7 -c chris -n chris -- python plugins/services/manager.py register host --pluginname pl-dircopy
+
+kubectl exec chris-6c68f79c74-dcfd6 -c chris -n chris -- python plugins/services/manager.py add host "http://localhost:30005/api/v1/" --description "Remote compute"
+
+CREATE SUPERUSER IN CHRIS STORE 
+kubectl exec -it chris-store-78c4856c55-5jkmb -n chris -- sh -c 'python manage.py createsuperuser --username chris --email dev@babymri.org'
+
+CREATE SUPERUSER IN CHRIS 
+kubectl exec -it chris-6c68f79c74-fnv4d -c chris -n chris -- sh -c 'python manage.py createsuperuser --username chris --email dev@babymri.org'
+
+CREATE REMOTE COMPUTE 
+kubectl exec chris-6c68f79c74-dcfd6 -c chris -n chris -- python plugins/services/manager.py add host "http://localhost:30005/api/v1/" --description "Remote compute"
+
+kubectl exec chris-6c68f79c74-p97wh -c chris -n chris -- python plugins/services/manager.py add host "http://192.168.49.2:30005/api/v1/" --description "Remote compute2"
+
+curl -H 'Content-Type: application/json' -X POST -d '{"pfcon_user": "pfcon", "pfcon_password": "pfcon1234"}' http://192.168.49.2:30005/api/v1/auth-token/
+
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwZmNvbl91c2VyIjoicGZjb24iLCJleHAiOjE2NjczOTE2ODh9.WHSO66B6rtmnb7wcfTwNUXfjWfTtPApd8-aJO7poA_E" -F args=--saveinputmeta -F args=--saveoutputmeta -F args=--dir -F args=cube/uploads -F args_path_flags=--dir -F auid=cube -F number_of_workers=1 -F cpu_limit=1000 -F memory_limit=200 -F gpu_limit=0 -F image=fnndsc/pl-mri10yr06mo01da_normal -F entrypoint=python3 -F entrypoint=mri10yr06mo01da_normal.py -F type=fs -F jid=chris-jid-7 -F data_file=@/tmp/in/test.zip http://192.168.49.2:30005/api/v1/jobs/
+
+ 1 | 
+ 2022-10-31 12:09:38.587544+00 | 
+ fnndsc/pl-mri10yr06mo01da_normal:1.1.4 |
+This application simply copies from embedded data a reference normal anonymized MRI of a subject aged 10 years, 06 months, 01 days. |
+1.1.4   |   
+2147483647 |           
+0 |     
+2147483647 |                     
+1 |         
+ 1000 |     
+0 |              
+200 |                     
+1 | python3   |
+ mri10yr06mo01da_normal.py | 
+ /usr/src/mri10yr06mo01da_normal |      
+  1
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: pman
+  labels:
+    app: pman
+    env: production
+spec:
+  selector:
+    app: pman
+    env: production
+  ports:
+    - port: 5010
+      targetPort: 5010
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pman
+  labels:
+    app: pman
+    env: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pman
+      env: production
+  template:
+    metadata:
+      name: pman
+      labels:
+        app: pman
+        env: production
+    spec:
+      serviceAccountName: job-creator
+      containers:
+        - name: pman
+          image: fnndsc/pman
+          ports:
+            - containerPort: 5010
+          # Since pman spins off containers of its own it needs to mount storeBase dir
+          # (where pfcon shares the data) into the spawned container. This directory is
+          # passed in the STOREBASE env variable.
+          env:
+            - name: STOREBASE
+              value: ${STOREBASE}
+            - name: CONTAINER_ENV
+              value: kubernetes
+            - name: JOB_NAMESPACE
+              value: ${NAMESPACE}
+          envFrom:
+            - configMapRef:
+                name: pman-config
+          volumeMounts:
+            - name: storebase
+              mountPath: "/var/local/storeBase"
+      volumes:
+        - name: storebase
+          hostPath:
+            path: ${STOREBASE}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: job-creator
+  namespace: chris
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: job-creator
+  namespace: chris
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: job-creator
+subjects:
+- kind: ServiceAccount
+  name: job-creator
+  namespace: chris
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: job-creator
+  namespace: chris
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+
+
+
+add this in the chris-admin
+  http://pfcon.host:5005/api/v1/auth-token/
+
+  pfcon
+  pfcon1234
+  initial_token

@@ -8,14 +8,22 @@ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
 START YOUR CLUSTER 
-minikube start
+minikube start --memory 3500 --disk-size 30G
 
 INSTALL KUBECTL
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
 echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-kubectl version --client
+    kubectl version --client    
+
+git clone https://github.com/FNNDSC/ChRIS_ultron_backend
+cd ChRIS_ultron_backend
+git clone https://github.com/FNNDSC/ChRIS_ui.git
+cd ChRIS_ui
+docker build -t fnndsc/chris_ui:dev -f Dockerfile_dev .
+docker run --rm -it -v $PWD:/home/localuser -p 3000:3000 -u $(id -u):$(id -g) --userns=host --name chris_ui fnndsc/chris_ui:dev
+./deploy.sh -O kubernetes up
 
 
 COMMANDS
@@ -106,3 +114,24 @@ echo -n 'username' | base64
 -- to make sure that the service is connected to the right pod 
 kubectl describe servcie mongodb-service
 
+
+-- install kubectl to switch kubernetes context/namespaces 
+# Install kubectx (Switch between Kubernetes contexts/namespaces)
+sudo curl -sSL http://github.com/ahmetb/kubectx/archive/v0.3.1.tar.gz | sudo tar -C /usr/local/ -xz
+export PATH=/usr/local/kubectx-0.3.1:$PATH
+
+# list all the containers on the pod 
+$ kubectl get pods POD_NAME -n NAMESPACE -o jsonpath='{.spec.containers[*].name}*'
+
+
+-- get the ip of minikube
+minikube ip
+
+# Install ingress Controller 
+--minikube addons enable ingress 
+
+#List the pods in the kubesystem namespaces to see the ingress controller
+-- kubectl get pod -n kube-system
+
+installl xh api client on ubuntu 
+ curl -sfL https://raw.githubusercontent.com/ducaale/xh/master/install.sh | sh

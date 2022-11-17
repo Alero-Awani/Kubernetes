@@ -95,7 +95,8 @@ resource "aws_security_group" "mtc_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["${chomp(data.http.my_local_ip.body)}/32"]
+    cidr_blocks = ["0.0.0.0/0"]
+    # "${chomp(data.http.my_local_ip.body)}/32"
   }
 
   egress {
@@ -108,7 +109,7 @@ resource "aws_security_group" "mtc_sg" {
 }
 
 resource "aws_instance" "dev_node" {
-  instance_type          = "t2.medium"
+  instance_type          = "t3.xlarge"
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   ami                    = data.aws_ami.server_ami.id
   vpc_security_group_ids = [aws_security_group.mtc_sg.id]
@@ -117,7 +118,7 @@ resource "aws_instance" "dev_node" {
   user_data              = file("user-data.tpl")
 
   root_block_device {
-    volume_size = 8
+    volume_size = 30
   }
 
   tags = {
